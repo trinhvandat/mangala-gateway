@@ -117,6 +117,35 @@ gateway:
     - /actuator/health
     - /actuator/info
     - /fallback/**
+    - /internal/**
+  # Policy Cache Configuration
+  policy:
+    auth-service-url: ${AUTH_SERVICE_URL:http://localhost:8080}
+    initial-load-timeout-seconds: ${POLICY_LOAD_TIMEOUT:30}
+    version-check-interval-seconds: ${POLICY_VERSION_CHECK_INTERVAL:60}
+    fail-on-load-error: ${POLICY_FAIL_ON_LOAD_ERROR:true}
+    redis-channel: ${POLICY_REDIS_CHANNEL:policy:updates}
+    use-kafka: ${POLICY_USE_KAFKA:false}
+    include-in-health-check: ${POLICY_HEALTH_CHECK:true}
+    no-match-behavior: ${POLICY_NO_MATCH_BEHAVIOR:DENY}
+  # ABAC SpEL Condition Evaluation
+  abac:
+    spel:
+      enabled: ${ABAC_SPEL_ENABLED:true}
+      max-expression-length: ${ABAC_MAX_EXPR_LENGTH:500}
+      evaluation-timeout-ms: ${ABAC_EVAL_TIMEOUT:100}
+      max-cache-size: ${ABAC_CACHE_SIZE:1000}
+  # Audit Logging to Kafka
+  audit:
+    enabled: ${AUDIT_ENABLED:false}
+    kafka-bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    batch-size: ${AUDIT_BATCH_SIZE:16384}
+    linger-ms: ${AUDIT_LINGER_MS:10}
+    buffer-memory: ${AUDIT_BUFFER_MEMORY:33554432}
+    max-block-ms: ${AUDIT_MAX_BLOCK_MS:100}
+    audit-allowed-requests: ${AUDIT_ALLOWED:true}
+    audit-denied-requests: ${AUDIT_DENIED:true}
+    audit-no-policy-requests: ${AUDIT_NO_POLICY:true}
 
 # Resilience4j Circuit Breaker Configuration
 resilience4j:
@@ -139,6 +168,15 @@ resilience4j:
         baseConfig: default
       transactionServiceCircuitBreaker:
         baseConfig: default
+      # PolicyLoader circuit breaker for Auth Service policy fetching
+      policyLoaderCircuitBreaker:
+        slidingWindowSize: 5
+        minimumNumberOfCalls: 3
+        failureRateThreshold: 60
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 2
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        eventConsumerBufferSize: 10
   timelimiter:
     configs:
       default:

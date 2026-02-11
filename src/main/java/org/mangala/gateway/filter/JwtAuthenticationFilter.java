@@ -8,10 +8,13 @@ import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.mangala.gateway.config.GatewayConfigProperties;
+import org.mangala.security.SecurityConstants;
+import org.springframework.core.Ordered;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -24,21 +27,22 @@ import reactor.core.publisher.Mono;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class JwtAuthenticationFilter implements WebFilter {
-
-    private static final String BEARER_PREFIX = "Bearer ";
-    private static final String USER_ID_HEADER = "X-User-Id";
-    private static final String USER_EMAIL_HEADER = "X-User-Email";
-    private static final String USER_ROLES_HEADER = "X-User-Roles";
+public class JwtAuthenticationFilter implements WebFilter, Ordered {
 
     private final GatewayConfigProperties gatewayConfigProperties;
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
+
+    @Override
+    public int getOrder() {
+        // Run before AbacAuthorizationFilter
+        return Ordered.LOWEST_PRECEDENCE - 20;
+    }
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
@@ -52,38 +56,66 @@ public class JwtAuthenticationFilter implements WebFilter {
 
         String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
 
-        if (!StringUtils.hasText(authHeader) || !authHeader.startsWith(BEARER_PREFIX)) {
+        if (!StringUtils.hasText(authHeader) || !authHeader.startsWith(SecurityConstants.BEARER_PREFIX)) {
             return chain.filter(exchange);
         }
 
-        String token = authHeader.substring(BEARER_PREFIX.length());
+        String token = authHeader.substring(SecurityConstants.BEARER_PREFIX.length());
 
         try {
             Claims claims = validateToken(token);
             String userId = claims.getSubject();
-            String email = claims.get("email", String.class);
+            String email = claims.get(SecurityConstants.CLAIM_EMAIL, String.class);
 
             @SuppressWarnings("unchecked")
-            List<String> roles = claims.get("roles", List.class);
+            List<String> roles = claims.get(SecurityConstants.CLAIM_ROLES, List.class);
+
+            @SuppressWarnings("unchecked")
+            List<String> permissions = claims.get(SecurityConstants.CLAIM_PERMISSIONS, List.class);
 
             // Add user info to request headers for downstream services
-            ServerHttpRequest mutatedRequest = request.mutate()
-                    .header(USER_ID_HEADER, userId)
-                    .header(USER_EMAIL_HEADER, email != null ? email : "")
-                    .header(USER_ROLES_HEADER, roles != null ? String.join(",", roles) : "")
-                    .build();
+            ServerHttpRequest.Builder requestBuilder = request.mutate()
+                    .header(SecurityConstants.HEADER_USER_ID, userId)
+                    .header(SecurityConstants.HEADER_USER_EMAIL, email != null ? email : "")
+                    .header(SecurityConstants.HEADER_USER_ROLES, roles != null ? String.join(",", roles) : "");
+
+            // Add permissions header if present
+            if (permissions != null && !permissions.isEmpty()) {
+                requestBuilder.header(SecurityConstants.HEADER_USER_PERMISSIONS, String.join(",", permissions));
+            }
+
+            ServerHttpRequest mutatedRequest = requestBuilder.build();
 
             ServerWebExchange mutatedExchange = exchange.mutate()
                     .request(mutatedRequest)
                     .build();
 
-            // Create authentication object
-            List<SimpleGrantedAuthority> authorities = roles != null
-                    ? roles.stream().map(SimpleGrantedAuthority::new).collect(Collectors.toList())
-                    : List.of();
+            // Create authentication object with both roles and permissions as authorities
+            List<GrantedAuthority> authorities = new ArrayList<>();
+
+            // Add roles as authorities
+            if (roles != null) {
+                roles.stream()
+                        .map(SimpleGrantedAuthority::new)
+                        .forEach(authorities::add);
+            }
+
+            // Add permissions as authorities (for AbacAuthorizationFilter)
+            if (permissions != null) {
+                permissions.stream()
+                        .map(SimpleGrantedAuthority::new)
+                        .forEach(authorities::add);
+            }
 
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(userId, null, authorities);
+
+            // Store permissions in authentication details for AbacAuthorizationFilter
+            Map<String, Object> details = new HashMap<>();
+            details.put("email", email);
+            details.put("roles", roles != null ? new HashSet<>(roles) : Collections.emptySet());
+            details.put("permissions", permissions != null ? new HashSet<>(permissions) : Collections.emptySet());
+            authentication.setDetails(details);
 
             return chain.filter(mutatedExchange)
                     .contextWrite(ReactiveSecurityContextHolder.withAuthentication(authentication));
