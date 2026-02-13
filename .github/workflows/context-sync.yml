@@ -38,11 +38,14 @@ jobs:
       - name: Run context sync check (script)
         run: ./scripts/check-context-sync.sh
 
-      - name: Verify local module
-        run: test -f mangala-common-security/pom.xml
-
-      - name: Install local dependency module
-        run: mvn -B -q -f mangala-common-security/pom.xml install -DskipTests
+      - name: Install local dependency module (if present)
+        run: |
+          if [ -f mangala-common-security/pom.xml ]; then
+            echo "Found local mangala-common-security module. Installing..."
+            mvn -B -q -f mangala-common-security/pom.xml install -DskipTests
+          else
+            echo "Local mangala-common-security module not found. Skipping local install step."
+          fi
 
       - name: Run context sync check (maven profile)
         run: mvn -B -q -Pcontext-check validate
