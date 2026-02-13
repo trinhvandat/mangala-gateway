@@ -43,7 +43,7 @@ spring:
               replenishRate: ${RATE_LIMIT_REPLENISH:10}
               burstCapacity: ${RATE_LIMIT_BURST:20}
               requestedTokens: 1
-            key-resolver: "#{@ipKeyResolver}"
+            key-resolver: "#{@compositeKeyResolver}"
         - name: CircuitBreaker
           args:
             name: defaultCircuitBreaker
@@ -122,6 +122,7 @@ gateway:
   policy:
     auth-service-url: ${AUTH_SERVICE_URL:http://localhost:8080}
     initial-load-timeout-seconds: ${POLICY_LOAD_TIMEOUT:30}
+    version-check-initial-delay-seconds: ${POLICY_VERSION_CHECK_INITIAL_DELAY:15}
     version-check-interval-seconds: ${POLICY_VERSION_CHECK_INTERVAL:60}
     fail-on-load-error: ${POLICY_FAIL_ON_LOAD_ERROR:true}
     redis-channel: ${POLICY_REDIS_CHANNEL:policy:updates}

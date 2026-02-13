@@ -3,7 +3,7 @@ package org.mangala.gateway.policy;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.reactor.circuitbreaker.operator.CircuitBreakerOperator;
-import io.github.resilience4j.reactor.timelimiter.operator.TimeLimiterOperator;
+import io.github.resilience4j.reactor.timelimiter.TimeLimiterOperator;
 import io.github.resilience4j.timelimiter.TimeLimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +19,7 @@ import reactor.util.retry.Retry;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Loads policy rules from Auth Service at gateway startup.
@@ -37,6 +38,7 @@ public class PolicyLoader implements ApplicationRunner {
     private final ReactiveRedisTemplate<String, String> redisTemplate;
     private final CircuitBreaker policyLoaderCircuitBreaker;
     private final TimeLimiter policyLoaderTimeLimiter;
+    private final AtomicBoolean loadInProgress = new AtomicBoolean(false);
 
     private static final String POLICY_VERSION_KEY = "policy:version";
 
@@ -53,6 +55,11 @@ public class PolicyLoader implements ApplicationRunner {
      * Load all policies from Auth Service with circuit breaker protection.
      */
     public Mono<Void> loadPolicies() {
+        if (!loadInProgress.compareAndSet(false, true)) {
+            log.info("Policy load already in progress, skipping duplicate trigger");
+            return Mono.empty();
+        }
+
         log.info("Loading policies from Auth Service: {}", policyConfig.getAuthServiceUrl());
 
         WebClient client = webClientBuilder
@@ -60,7 +67,7 @@ public class PolicyLoader implements ApplicationRunner {
                 .build();
 
         return client.get()
-                .uri("/internal/policies")
+                .uri("/v1/internal/policies")
                 .retrieve()
                 .bodyToFlux(ApiPermissionDTO.class)
                 .collectList()
@@ -76,6 +83,7 @@ public class PolicyLoader implements ApplicationRunner {
                 .flatMap(this::loadPoliciesAndVersion)
                 // Fallback when circuit breaker is open or call fails
                 .onErrorResume(this::handleLoadError)
+                .doFinally(signal -> loadInProgress.set(false))
                 .then();
     }
 
@@ -186,7 +194,7 @@ public class PolicyLoader implements ApplicationRunner {
                 .build();
 
         return client.get()
-                .uri("/internal/policies/version")
+                .uri("/v1/internal/policies/version")
                 .retrieve()
                 .bodyToMono(Long.class)
                 // Apply circuit breaker to version fetch as well

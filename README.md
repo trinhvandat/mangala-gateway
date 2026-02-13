@@ -230,6 +230,21 @@ mangala-gateway/
 └── README.md
 ```
 
+## Context Pack
+
+Use these files to bootstrap quickly in new sessions:
+
+- `AGENTS.md`
+- `docs/context-map.yaml`
+- `docs/adr/`
+- `scripts/check-context-sync.sh`
+
+Run consistency check:
+
+```bash
+./scripts/check-context-sync.sh
+```
+
 ## License
 
 MIT License - See LICENSE file for details.

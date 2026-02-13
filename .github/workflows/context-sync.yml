@@ -1,0 +1,48 @@
+name: Context Sync Check
+
+on:
+  pull_request:
+    paths:
+      - 'src/main/java/org/mangala/gateway/policy/**'
+      - 'src/main/java/org/mangala/gateway/authorization/**'
+      - 'src/main/java/org/mangala/gateway/abac/**'
+      - 'mangala-common-security/src/main/java/org/mangala/security/**'
+      - 'docs/**'
+      - 'AGENTS.md'
+      - 'scripts/check-context-sync.sh'
+      - 'pom.xml'
+      - '.github/workflows/context-sync.yml'
+  workflow_dispatch:
+
+jobs:
+  context-sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Ensure script executable
+        run: chmod +x scripts/check-context-sync.sh
+
+      - name: Run context sync check (script)
+        run: ./scripts/check-context-sync.sh
+
+      - name: Verify local module
+        run: test -f mangala-common-security/pom.xml
+
+      - name: Install local dependency module
+        run: mvn -B -q -f mangala-common-security/pom.xml install -DskipTests
+
+      - name: Run context sync check (maven profile)
+        run: mvn -B -q -Pcontext-check validate

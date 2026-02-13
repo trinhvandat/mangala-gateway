@@ -2,10 +2,10 @@ package org.mangala.gateway.audit;
 
 import lombok.extern.slf4j.Slf4j;
 import org.mangala.security.SecurityConstants;
-import org.mangala.security.model.AuthorizationResult;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.core.reactive.ReactiveKafkaProducerTemplate;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -16,7 +16,9 @@ import java.util.concurrent.atomic.AtomicLong;
  * Non-blocking, fire-and-forget operation that never affects request latency.
  */
 @Slf4j
-@Component
+@Service
+@ConditionalOnProperty(value = "gateway.audit.enabled", havingValue = "true")
+@ConditionalOnBean(ReactiveKafkaProducerTemplate.class)
 public class AuthorizationAuditPublisher {
 
     private final ReactiveKafkaProducerTemplate<String, AuthorizationAuditEvent> kafkaTemplate;
@@ -26,19 +28,10 @@ public class AuthorizationAuditPublisher {
     private final AtomicLong publishedCount = new AtomicLong(0);
     private final AtomicLong failedCount = new AtomicLong(0);
 
-    @Autowired(required = false)
     public AuthorizationAuditPublisher(
             ReactiveKafkaProducerTemplate<String, AuthorizationAuditEvent> kafkaTemplate,
             AuditConfigProperties auditConfig) {
         this.kafkaTemplate = kafkaTemplate;
-        this.auditConfig = auditConfig;
-    }
-
-    /**
-     * Constructor when Kafka is disabled.
-     */
-    public AuthorizationAuditPublisher(AuditConfigProperties auditConfig) {
-        this.kafkaTemplate = null;
         this.auditConfig = auditConfig;
     }
 

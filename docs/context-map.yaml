@@ -1,0 +1,74 @@
+version: 1
+service:
+  name: mangala-gateway
+  package: org.mangala.gateway
+  runtime: spring-boot-3.4.x + spring-cloud-gateway
+
+entrypoints:
+  main_class: src/main/java/org/mangala/gateway/GatewayApplication.java
+  filter_chain:
+    - src/main/java/org/mangala/gateway/filter/JwtAuthenticationFilter.java
+    - src/main/java/org/mangala/gateway/authorization/AbacAuthorizationFilter.java
+
+architecture:
+  style: capability-oriented layers
+  capabilities:
+    - name: authentication
+      package: org.mangala.gateway.filter
+      responsibility: validate JWT and attach user claims context
+    - name: authorization
+      package: org.mangala.gateway.authorization
+      responsibility: permission and ABAC enforcement
+    - name: policy_engine
+      package: org.mangala.gateway.policy
+      responsibility: load/cache/reload policy rules
+    - name: abac_eval
+      package: org.mangala.gateway.abac
+      responsibility: secure SpEL condition evaluation
+    - name: audit
+      package: org.mangala.gateway.audit
+      responsibility: publish authorization decision audit events
+    - name: health
+      package: org.mangala.gateway.health
+      responsibility: policy loader/cache health reporting
+
+security_contracts:
+  inbound_claims:
+    - roles
+    - permissions
+    - email
+  auth_service_internal_apis:
+    - method: GET
+      path: /v1/internal/policies
+      purpose: full active policy snapshot
+    - method: GET
+      path: /v1/internal/policies/version
+      purpose: version check for conditional reload
+
+policy_cache_behavior:
+  cache_type: in_memory
+  match_order:
+    - exact method+path
+    - wildcard method exact path
+    - sorted pattern rules
+  no_match_behavior_config: gateway.policy.no-match-behavior
+
+integration:
+  shared_module:
+    - mangala-common-security
+  external_dependencies:
+    - auth-service (policy source)
+    - redis (version cache and update listener)
+    - kafka (optional audit)
+
+operational_rules:
+  if_changed_then_update_docs:
+    - src/main/java/org/mangala/gateway/policy/
+    - src/main/java/org/mangala/gateway/authorization/
+    - src/main/java/org/mangala/gateway/abac/
+    - mangala-common-security/src/main/java/org/mangala/security/
+    - auth policy API paths in PolicyLoader
+  required_docs:
+    - AGENTS.md
+    - docs/context-map.yaml
+    - docs/adr/

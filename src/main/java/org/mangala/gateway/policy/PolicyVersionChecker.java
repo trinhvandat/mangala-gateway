@@ -21,7 +21,10 @@ public class PolicyVersionChecker {
      * Check for policy updates every 60 seconds.
      * This is a fallback in case broadcast messages are missed.
      */
-    @Scheduled(fixedDelayString = "${gateway.policy.version-check-interval-seconds:60}000")
+    @Scheduled(
+            fixedDelayString = "${gateway.policy.version-check-interval-seconds:60}000",
+            initialDelayString = "${gateway.policy.version-check-initial-delay-seconds:15}000"
+    )
     public void checkForUpdates() {
         if (!policyCache.isHealthy()) {
             log.warn("Policy cache unhealthy, attempting reload...");
