@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
@@ -52,6 +53,14 @@ public class RequestLoggingFilter implements GlobalFilter, Ordered {
         // Store start time for response time calculation
         mutatedExchange.getAttributes().put(START_TIME_ATTR, System.currentTimeMillis());
 
+        // Register response headers before commit to avoid mutating read-only headers later.
+        mutatedExchange.getResponse().beforeCommit(() -> {
+            ServerHttpResponse response = mutatedExchange.getResponse();
+            response.getHeaders().set(REQUEST_ID_HEADER, finalRequestId);
+            response.getHeaders().set(CORRELATION_ID_HEADER, finalCorrelationId);
+            return Mono.empty();
+        });
+
         log.info("[{}] Incoming request: {} {} from {}",
                 finalRequestId,
                 request.getMethod(),
@@ -62,6 +71,7 @@ public class RequestLoggingFilter implements GlobalFilter, Ordered {
                 .then(Mono.fromRunnable(() -> {
                     Long startTime = mutatedExchange.getAttribute(START_TIME_ATTR);
                     ServerHttpResponse response = mutatedExchange.getResponse();
+                    HttpStatusCode statusCode = response.getStatusCode();
 
                     // Add tracing headers to response
                     response.getHeaders().add(REQUEST_ID_HEADER, finalRequestId);
@@ -73,7 +83,7 @@ public class RequestLoggingFilter implements GlobalFilter, Ordered {
                             finalRequestId,
                             request.getMethod(),
                             request.getPath(),
-                            response.getStatusCode(),
+                            statusCode != null ? statusCode.value() : "UNKNOWN",
                             duration);
                 }));
     }
