@@ -30,6 +30,10 @@ public class GlobalExceptionHandler implements ErrorWebExceptionHandler {
     @Override
     public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
         ServerHttpResponse response = exchange.getResponse();
+        if (response.isCommitted()) {
+            log.error("Response already committed, cannot render error payload", ex);
+            return Mono.error(ex);
+        }
 
         String path = exchange.getRequest().getPath().value();
         String requestId = exchange.getRequest().getHeaders().getFirst("X-Request-Id");
