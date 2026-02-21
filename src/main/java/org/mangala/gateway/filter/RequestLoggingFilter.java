@@ -73,10 +73,6 @@ public class RequestLoggingFilter implements GlobalFilter, Ordered {
                     ServerHttpResponse response = mutatedExchange.getResponse();
                     HttpStatusCode statusCode = response.getStatusCode();
 
-                    // Add tracing headers to response
-                    response.getHeaders().add(REQUEST_ID_HEADER, finalRequestId);
-                    response.getHeaders().add(CORRELATION_ID_HEADER, finalCorrelationId);
-
                     long duration = startTime != null ? System.currentTimeMillis() - startTime : 0;
 
                     log.info("[{}] Response: {} {} - Status: {} - Duration: {}ms",
