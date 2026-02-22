@@ -22,6 +22,9 @@ architecture:
     - name: policy_engine
       package: org.mangala.gateway.policy
       responsibility: load/cache/reload policy rules
+    - name: policy_contract_client
+      package: org.mangala.gateway.policy
+      responsibility: consume auth internal policy APIs with stable contract expectations
     - name: abac_eval
       package: org.mangala.gateway.abac
       responsibility: secure SpEL condition evaluation
@@ -57,6 +60,14 @@ security_contracts:
     - method: GET
       path: /v1/internal/policies/version
       purpose: version check for conditional reload
+  contract_test_coverage:
+    - producer: mangala-authentication internal policy APIs
+    - consumer: gateway AuthPolicyApiClient + PolicyLoader
+    - checks:
+        - policies payload schema
+        - version payload numeric contract
+        - 4xx/5xx error handling
+        - malformed payload/content-type failures
 
 policy_cache_behavior:
   cache_type: in_memory
