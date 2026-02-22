@@ -13,7 +13,6 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
 
@@ -34,7 +33,7 @@ public class PolicyLoader implements ApplicationRunner {
 
     private final PolicyCache policyCache;
     private final PolicyConfigProperties policyConfig;
-    private final WebClient.Builder webClientBuilder;
+    private final AuthPolicyApiClient authPolicyApiClient;
     private final ReactiveRedisTemplate<String, String> redisTemplate;
     private final CircuitBreaker policyLoaderCircuitBreaker;
     private final TimeLimiter policyLoaderTimeLimiter;
@@ -62,15 +61,7 @@ public class PolicyLoader implements ApplicationRunner {
 
         log.info("Loading policies from Auth Service: {}", policyConfig.getAuthServiceUrl());
 
-        WebClient client = webClientBuilder
-                .baseUrl(policyConfig.getAuthServiceUrl())
-                .build();
-
-        return client.get()
-                .uri("/v1/internal/policies")
-                .retrieve()
-                .bodyToFlux(ApiPermissionDTO.class)
-                .collectList()
+        return authPolicyApiClient.fetchPolicies()
                 // Apply time limiter first, then circuit breaker
                 .transformDeferred(TimeLimiterOperator.of(policyLoaderTimeLimiter))
                 .transformDeferred(CircuitBreakerOperator.of(policyLoaderCircuitBreaker))
@@ -189,14 +180,7 @@ public class PolicyLoader implements ApplicationRunner {
     }
 
     private Mono<Long> fetchVersionFromAuthService() {
-        WebClient client = webClientBuilder
-                .baseUrl(policyConfig.getAuthServiceUrl())
-                .build();
-
-        return client.get()
-                .uri("/v1/internal/policies/version")
-                .retrieve()
-                .bodyToMono(Long.class)
+        return authPolicyApiClient.fetchPolicyVersion()
                 // Apply circuit breaker to version fetch as well
                 .transformDeferred(CircuitBreakerOperator.of(policyLoaderCircuitBreaker))
                 .doOnNext(v -> {
