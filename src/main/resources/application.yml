@@ -102,6 +102,13 @@ spring:
 
 # Gateway Custom Configuration
 gateway:
+  security:
+    headers:
+      enabled: ${SECURITY_HEADERS_ENABLED:false}
+      hsts-enabled: ${SECURITY_HSTS_ENABLED:false}
+      csp: ${SECURITY_CSP:}
+      referrer-policy: ${SECURITY_REFERRER_POLICY:}
+      permissions-policy: ${SECURITY_PERMISSIONS_POLICY:}
   jwt:
     secret: ${JWT_SECRET:your-256-bit-secret-key-for-jwt-signing-replace-in-production}
     issuer: ${JWT_ISSUER:mangala}
