@@ -107,6 +107,11 @@ docker run -d \
 | `RATE_LIMIT_REPLENISH` | 10 | Rate limit replenish rate per second |
 | `RATE_LIMIT_BURST` | 20 | Rate limit burst capacity |
 | `CORS_ALLOWED_ORIGINS` | http://localhost:3000,http://localhost:5173 | Allowed CORS origins |
+| `SECURITY_HEADERS_ENABLED` | false | Master toggle for production security headers baseline |
+| `SECURITY_HSTS_ENABLED` | false | Enable Strict-Transport-Security response header |
+| `SECURITY_CSP` | (empty) | Value for Content-Security-Policy header |
+| `SECURITY_REFERRER_POLICY` | (empty) | Value for Referrer-Policy header |
+| `SECURITY_PERMISSIONS_POLICY` | (empty) | Value for Permissions-Policy header |
 
 ## API Routes
 
