@@ -1,5 +1,6 @@
 package org.mangala.gateway.filter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -8,6 +9,7 @@ import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.mangala.gateway.config.GatewayConfigProperties;
+import org.mangala.gateway.exception.ErrorResponseWriter;
 import org.mangala.security.SecurityConstants;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpHeaders;
@@ -36,6 +38,7 @@ import java.util.stream.Collectors;
 public class JwtAuthenticationFilter implements WebFilter, Ordered {
 
     private final GatewayConfigProperties gatewayConfigProperties;
+    private final ObjectMapper objectMapper;
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
     @Override
@@ -122,12 +125,22 @@ public class JwtAuthenticationFilter implements WebFilter, Ordered {
 
         } catch (ExpiredJwtException e) {
             log.warn("JWT token expired for path: {}", path);
-            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-            return exchange.getResponse().setComplete();
+            return ErrorResponseWriter.writeJson(
+                    exchange,
+                    HttpStatus.UNAUTHORIZED,
+                    "GATEWAY_UNAUTHORIZED",
+                    "JWT token expired",
+                    objectMapper
+            );
         } catch (JwtException e) {
             log.warn("Invalid JWT token for path: {}: {}", path, e.getMessage());
-            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-            return exchange.getResponse().setComplete();
+            return ErrorResponseWriter.writeJson(
+                    exchange,
+                    HttpStatus.UNAUTHORIZED,
+                    "GATEWAY_UNAUTHORIZED",
+                    "Invalid JWT token",
+                    objectMapper
+            );
         }
     }
 
