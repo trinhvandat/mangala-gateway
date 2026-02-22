@@ -137,6 +137,17 @@ gateway:
     use-kafka: ${POLICY_USE_KAFKA:false}
     include-in-health-check: ${POLICY_HEALTH_CHECK:true}
     no-match-behavior: ${POLICY_NO_MATCH_BEHAVIOR:DENY}
+    mtls:
+      enabled: ${POLICY_MTLS_ENABLED:false}
+      key-store-path: ${POLICY_MTLS_KEY_STORE_PATH:}
+      key-store-password: ${POLICY_MTLS_KEY_STORE_PASSWORD:}
+      key-store-type: ${POLICY_MTLS_KEY_STORE_TYPE:PKCS12}
+      trust-store-path: ${POLICY_MTLS_TRUST_STORE_PATH:}
+      trust-store-password: ${POLICY_MTLS_TRUST_STORE_PASSWORD:}
+      trust-store-type: ${POLICY_MTLS_TRUST_STORE_TYPE:PKCS12}
+    profile-guard:
+      enforce-mtls-in-non-dev: ${POLICY_MTLS_ENFORCE_NON_DEV:true}
+      dev-profiles: ${POLICY_DEV_PROFILES:dev,local,test}
   # ABAC SpEL Condition Evaluation
   abac:
     spel:

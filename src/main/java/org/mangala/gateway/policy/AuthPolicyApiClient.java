@@ -2,6 +2,7 @@ package org.mangala.gateway.policy;
 
 import lombok.RequiredArgsConstructor;
 import org.mangala.security.model.ApiPermissionDTO;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -13,6 +14,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AuthPolicyApiClient {
 
+    @Qualifier("policyApiWebClientBuilder")
     private final WebClient.Builder webClientBuilder;
     private final PolicyConfigProperties policyConfig;
 
