@@ -1,10 +1,13 @@
 package org.mangala.gateway.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.mangala.gateway.exception.ErrorResponseWriter;
 import org.mangala.gateway.filter.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
@@ -18,6 +21,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final GatewayConfigProperties gatewayConfigProperties;
+    private final ObjectMapper objectMapper;
 
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
@@ -26,6 +30,15 @@ public class SecurityConfig {
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
                 .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
                 .securityContextRepository(NoOpServerSecurityContextRepository.getInstance())
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint((exchange, ex) -> ErrorResponseWriter.writeJson(
+                                exchange,
+                                HttpStatus.UNAUTHORIZED,
+                                "GATEWAY_UNAUTHORIZED",
+                                "Authentication required",
+                                objectMapper
+                        ))
+                )
                 .authorizeExchange(exchanges -> exchanges
                         // Public endpoints - no authentication required
                         .pathMatchers(HttpMethod.OPTIONS).permitAll()

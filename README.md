@@ -186,6 +186,22 @@ All errors return a consistent JSON structure:
 }
 ```
 
+### Security Decision Matrix (Contract)
+
+| Scenario | Status | Contract |
+|----------|--------|----------|
+| Missing token on protected endpoint | 401 | JSON body with `code=GATEWAY_UNAUTHORIZED`, `message=Authentication required` |
+| Invalid JWT on protected endpoint | 401 | JSON body with `code=GATEWAY_UNAUTHORIZED`, `message=Invalid JWT token` |
+| Expired JWT on protected endpoint | 401 | JSON body with `code=GATEWAY_UNAUTHORIZED`, `message=JWT token expired` |
+| Authenticated but insufficient permission | 403 | Header `X-Forbidden-Reason=Insufficient permissions` |
+| Authenticated, ABAC condition failed | 403 | Header `X-Forbidden-Reason=Access condition not met` |
+| No policy match + `gateway.policy.no-match-behavior=DENY` | 403 | Header `X-Forbidden-Reason` contains no-policy reason |
+| No policy match + `gateway.policy.no-match-behavior=ALLOW` | Pass-through | Header `X-Authorization-Rule=no-policy-allow` |
+
+Notes:
+- Public paths (`/api/v1/register/**`, `/api/v1/authenticate/**`, `/api/v1/auth/refresh`) bypass auth.
+- For protected routes, Spring Security authn may return 401 before ABAC logic runs when token is missing.
+
 ### Error Codes
 
 | Code | HTTP Status | Description |

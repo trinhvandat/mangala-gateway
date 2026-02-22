@@ -37,6 +37,19 @@ security_contracts:
     - roles
     - permissions
     - email
+  authorization_status_matrix:
+    - condition: missing_or_invalid_or_expired_token
+      http_status: 401
+      contract: json body with code GATEWAY_UNAUTHORIZED
+    - condition: permission_or_abac_denied
+      http_status: 403
+      contract: X-Forbidden-Reason header
+    - condition: no_policy_match_deny_mode
+      http_status: 403
+      contract: X-Forbidden-Reason header
+    - condition: no_policy_match_allow_mode
+      http_status: pass_through
+      contract: X-Authorization-Rule=no-policy-allow
   auth_service_internal_apis:
     - method: GET
       path: /v1/internal/policies
