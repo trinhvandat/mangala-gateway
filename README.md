@@ -112,6 +112,15 @@ docker run -d \
 | `SECURITY_CSP` | (empty) | Value for Content-Security-Policy header |
 | `SECURITY_REFERRER_POLICY` | (empty) | Value for Referrer-Policy header |
 | `SECURITY_PERMISSIONS_POLICY` | (empty) | Value for Permissions-Policy header |
+| `POLICY_MTLS_ENABLED` | false | Enable mTLS client for gateway -> auth internal policy APIs |
+| `POLICY_MTLS_KEY_STORE_PATH` | (empty) | Client keystore path (required in non-dev when mTLS enabled) |
+| `POLICY_MTLS_KEY_STORE_PASSWORD` | (empty) | Client keystore password |
+| `POLICY_MTLS_KEY_STORE_TYPE` | PKCS12 | Client keystore type |
+| `POLICY_MTLS_TRUST_STORE_PATH` | (empty) | Truststore path for auth service certificate chain |
+| `POLICY_MTLS_TRUST_STORE_PASSWORD` | (empty) | Truststore password |
+| `POLICY_MTLS_TRUST_STORE_TYPE` | PKCS12 | Truststore type |
+| `POLICY_MTLS_ENFORCE_NON_DEV` | true | Fail startup in non-dev profiles if policy mTLS is not fully configured |
+| `POLICY_DEV_PROFILES` | dev,local,test | Profiles considered development-like for mTLS enforcement guard |
 
 ## API Routes
 
