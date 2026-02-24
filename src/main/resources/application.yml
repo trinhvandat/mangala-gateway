@@ -1,0 +1,230 @@
+server:
+  port: ${SERVER_PORT:8000}
+
+spring:
+  application:
+    name: mangala-gateway
+
+  # Redis for Rate Limiting
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+
+  cloud:
+    gateway:
+      # Global CORS Configuration
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+              - PATCH
+            allowedHeaders: "*"
+            exposedHeaders:
+              - X-Request-Id
+              - X-Correlation-Id
+            allowCredentials: true
+            maxAge: 3600
+
+      # Default Filters (applied to all routes)
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter:
+              replenishRate: ${RATE_LIMIT_REPLENISH:10}
+              burstCapacity: ${RATE_LIMIT_BURST:20}
+              requestedTokens: 1
+            key-resolver: "#{@compositeKeyResolver}"
+        - name: CircuitBreaker
+          args:
+            name: defaultCircuitBreaker
+            fallbackUri: forward:/fallback
+
+      # Route Definitions
+      routes:
+        # Authentication Service
+        - id: auth-service
+          uri: ${AUTH_SERVICE_URL:http://localhost:8080}
+          predicates:
+            - Path=/api/v1/auth/**,/api/v1/register/**,/api/v1/authenticate/**
+          filters:
+            # External path is /api/v1/**, auth service controllers are /v1/**
+            - StripPrefix=1
+            - name: CircuitBreaker
+              args:
+                name: authServiceCircuitBreaker
+                fallbackUri: forward:/fallback/auth
+
+        # Wallet Service (future)
+        - id: wallet-service
+          uri: ${WALLET_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/v1/wallets/**,/api/v1/addresses/**
+          filters:
+            - StripPrefix=0
+            - name: CircuitBreaker
+              args:
+                name: walletServiceCircuitBreaker
+                fallbackUri: forward:/fallback/wallet
+
+        # Portfolio Service (future)
+        - id: portfolio-service
+          uri: ${PORTFOLIO_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/portfolios/**,/api/v1/holdings/**
+          filters:
+            - StripPrefix=0
+            - name: CircuitBreaker
+              args:
+                name: portfolioServiceCircuitBreaker
+                fallbackUri: forward:/fallback/portfolio
+
+        # Transaction Service (future)
+        - id: transaction-service
+          uri: ${TRANSACTION_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/v1/transactions/**
+          filters:
+            - StripPrefix=0
+            - name: CircuitBreaker
+              args:
+                name: transactionServiceCircuitBreaker
+                fallbackUri: forward:/fallback/transaction
+
+# Gateway Custom Configuration
+gateway:
+  security:
+    headers:
+      enabled: ${SECURITY_HEADERS_ENABLED:false}
+      hsts-enabled: ${SECURITY_HSTS_ENABLED:false}
+      csp: ${SECURITY_CSP:}
+      referrer-policy: ${SECURITY_REFERRER_POLICY:}
+      permissions-policy: ${SECURITY_PERMISSIONS_POLICY:}
+  jwt:
+    secret: ${JWT_SECRET:your-256-bit-secret-key-for-jwt-signing-replace-in-production}
+    issuer: ${JWT_ISSUER:mangala}
+    access-token-expiration: ${JWT_ACCESS_EXPIRATION:900000}
+    refresh-token-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+  rate-limit:
+    enabled: ${RATE_LIMIT_ENABLED:true}
+    default-replenish-rate: ${RATE_LIMIT_REPLENISH:10}
+    default-burst-capacity: ${RATE_LIMIT_BURST:20}
+  public-paths:
+    - /api/v1/register/**
+    - /api/v1/authenticate/**
+    - /api/v1/auth/refresh
+    - /actuator/health
+    - /actuator/info
+    - /fallback/**
+    - /internal/**
+  # Policy Cache Configuration
+  policy:
+    auth-service-url: ${AUTH_SERVICE_URL:http://localhost:8080}
+    initial-load-timeout-seconds: ${POLICY_LOAD_TIMEOUT:30}
+    version-check-initial-delay-seconds: ${POLICY_VERSION_CHECK_INITIAL_DELAY:15}
+    version-check-interval-seconds: ${POLICY_VERSION_CHECK_INTERVAL:60}
+    fail-on-load-error: ${POLICY_FAIL_ON_LOAD_ERROR:true}
+    redis-channel: ${POLICY_REDIS_CHANNEL:policy:updates}
+    use-kafka: ${POLICY_USE_KAFKA:false}
+    include-in-health-check: ${POLICY_HEALTH_CHECK:true}
+    no-match-behavior: ${POLICY_NO_MATCH_BEHAVIOR:DENY}
+    mtls:
+      enabled: ${POLICY_MTLS_ENABLED:false}
+      key-store-path: ${POLICY_MTLS_KEY_STORE_PATH:}
+      key-store-password: ${POLICY_MTLS_KEY_STORE_PASSWORD:}
+      key-store-type: ${POLICY_MTLS_KEY_STORE_TYPE:PKCS12}
+      trust-store-path: ${POLICY_MTLS_TRUST_STORE_PATH:}
+      trust-store-password: ${POLICY_MTLS_TRUST_STORE_PASSWORD:}
+      trust-store-type: ${POLICY_MTLS_TRUST_STORE_TYPE:PKCS12}
+    profile-guard:
+      enforce-mtls-in-non-dev: ${POLICY_MTLS_ENFORCE_NON_DEV:true}
+      dev-profiles: ${POLICY_DEV_PROFILES:dev,local,test}
+  # ABAC SpEL Condition Evaluation
+  abac:
+    spel:
+      enabled: ${ABAC_SPEL_ENABLED:true}
+      max-expression-length: ${ABAC_MAX_EXPR_LENGTH:500}
+      evaluation-timeout-ms: ${ABAC_EVAL_TIMEOUT:100}
+      max-cache-size: ${ABAC_CACHE_SIZE:1000}
+  # Audit Logging to Kafka
+  audit:
+    enabled: ${AUDIT_ENABLED:false}
+    kafka-bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    batch-size: ${AUDIT_BATCH_SIZE:16384}
+    linger-ms: ${AUDIT_LINGER_MS:10}
+    buffer-memory: ${AUDIT_BUFFER_MEMORY:33554432}
+    max-block-ms: ${AUDIT_MAX_BLOCK_MS:100}
+    audit-allowed-requests: ${AUDIT_ALLOWED:true}
+    audit-denied-requests: ${AUDIT_DENIED:true}
+    audit-no-policy-requests: ${AUDIT_NO_POLICY:true}
+
+# Resilience4j Circuit Breaker Configuration
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+    instances:
+      authServiceCircuitBreaker:
+        baseConfig: default
+      walletServiceCircuitBreaker:
+        baseConfig: default
+      portfolioServiceCircuitBreaker:
+        baseConfig: default
+      transactionServiceCircuitBreaker:
+        baseConfig: default
+      # PolicyLoader circuit breaker for Auth Service policy fetching
+      policyLoaderCircuitBreaker:
+        slidingWindowSize: 5
+        minimumNumberOfCalls: 3
+        failureRateThreshold: 60
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 2
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        eventConsumerBufferSize: 10
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 10s
+        cancelRunningFuture: true
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,gateway
+  endpoint:
+    health:
+      show-details: when_authorized
+    gateway:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    org.mangala.gateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.security: DEBUG
+    io.github.resilience4j: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId:-}] [%X{spanId:-}] %-5level %logger{36} - %msg%n"
