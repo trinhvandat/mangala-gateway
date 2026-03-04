@@ -4,9 +4,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.mangala.gateway.exception.GatewayErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
@@ -15,7 +15,7 @@ import reactor.core.publisher.Mono;
 @RequestMapping("/fallback")
 public class FallbackController {
 
-    @GetMapping
+    @RequestMapping(method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH})
     public Mono<ResponseEntity<GatewayErrorResponse>> defaultFallback(
             @RequestHeader(value = "X-Request-Id", required = false) String requestId) {
         log.warn("[{}] Circuit breaker fallback triggered", requestId);
@@ -29,7 +29,7 @@ public class FallbackController {
                 )));
     }
 
-    @GetMapping("/auth")
+    @RequestMapping(value = "/auth", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH})
     public Mono<ResponseEntity<GatewayErrorResponse>> authFallback(
             @RequestHeader(value = "X-Request-Id", required = false) String requestId) {
         log.warn("[{}] Auth service circuit breaker fallback triggered", requestId);
@@ -43,7 +43,7 @@ public class FallbackController {
                 )));
     }
 
-    @GetMapping("/wallet")
+    @RequestMapping(value = "/wallet", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH})
     public Mono<ResponseEntity<GatewayErrorResponse>> walletFallback(
             @RequestHeader(value = "X-Request-Id", required = false) String requestId) {
         log.warn("[{}] Wallet service circuit breaker fallback triggered", requestId);
@@ -57,7 +57,7 @@ public class FallbackController {
                 )));
     }
 
-    @GetMapping("/portfolio")
+    @RequestMapping(value = "/portfolio", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH})
     public Mono<ResponseEntity<GatewayErrorResponse>> portfolioFallback(
             @RequestHeader(value = "X-Request-Id", required = false) String requestId) {
         log.warn("[{}] Portfolio service circuit breaker fallback triggered", requestId);
@@ -71,7 +71,7 @@ public class FallbackController {
                 )));
     }
 
-    @GetMapping("/transaction")
+    @RequestMapping(value = "/transaction", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH})
     public Mono<ResponseEntity<GatewayErrorResponse>> transactionFallback(
             @RequestHeader(value = "X-Request-Id", required = false) String requestId) {
         log.warn("[{}] Transaction service circuit breaker fallback triggered", requestId);
