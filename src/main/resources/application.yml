@@ -76,9 +76,9 @@ spring:
                 name: walletServiceCircuitBreaker
                 fallbackUri: forward:/fallback/wallet
 
-        # Portfolio Service (future)
+        # Portfolio Service
         - id: portfolio-service
-          uri: ${PORTFOLIO_SERVICE_URL:http://localhost:8082}
+          uri: ${PORTFOLIO_SERVICE_URL:http://localhost:8182}
           predicates:
             - Path=/api/v1/portfolios,/api/v1/portfolios/**,/api/v1/holdings,/api/v1/holdings/**
           filters:
@@ -111,6 +111,42 @@ spring:
               args:
                 name: priceFeedServiceCircuitBreaker
                 fallbackUri: forward:/fallback/price
+
+        # Crawler Service
+        - id: crawler-service
+          uri: ${CRAWLER_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/api/v1/crawler/**
+          filters:
+            - StripPrefix=0
+            - name: CircuitBreaker
+              args:
+                name: crawlerServiceCircuitBreaker
+                fallbackUri: forward:/fallback/crawler
+
+        # Notification Service
+        - id: notification-service
+          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8086}
+          predicates:
+            - Path=/api/v1/notifications/**,/api/v1/alerts/**
+          filters:
+            - StripPrefix=0
+            - name: CircuitBreaker
+              args:
+                name: notificationServiceCircuitBreaker
+                fallbackUri: forward:/fallback/notification
+
+        # Transaction History Service
+        - id: transaction-history-service
+          uri: ${TRANSACTION_HISTORY_SERVICE_URL:http://localhost:8087}
+          predicates:
+            - Path=/api/v1/transactions/**
+          filters:
+            - StripPrefix=0
+            - name: CircuitBreaker
+              args:
+                name: transactionHistoryServiceCircuitBreaker
+                fallbackUri: forward:/fallback/transactions
 
 # Gateway Custom Configuration
 gateway:
@@ -218,6 +254,12 @@ resilience4j:
       transactionServiceCircuitBreaker:
         baseConfig: default
       priceFeedServiceCircuitBreaker:
+        baseConfig: default
+      crawlerServiceCircuitBreaker:
+        baseConfig: default
+      notificationServiceCircuitBreaker:
+        baseConfig: default
+      transactionHistoryServiceCircuitBreaker:
         baseConfig: default
       # PolicyLoader circuit breaker for Auth Service policy fetching
       policyLoaderCircuitBreaker:

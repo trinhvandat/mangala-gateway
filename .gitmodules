@@ -1,0 +1,3 @@
+[submodule "mangala-common-security"]
+	path = mangala-common-security
+	url = git@github.com:trinhvandat/mangala-common-security.git

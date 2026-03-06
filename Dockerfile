@@ -3,11 +3,19 @@ FROM maven:3.9.9-eclipse-temurin-21-alpine AS build
 
 WORKDIR /app
 
-# Copy pom.xml and download dependencies
+# Copy common-security module (git submodule)
+COPY mangala-common-security/pom.xml mangala-common-security/pom.xml
+COPY mangala-common-security/src mangala-common-security/src
+
+# Build common-security
+WORKDIR /app/mangala-common-security
+RUN mvn clean install -DskipTests -B
+
+# Copy gateway service
+WORKDIR /app/mangala-gateway
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 
-# Copy source code and build
 COPY src ./src
 RUN mvn clean package -DskipTests -B
 
@@ -21,7 +29,7 @@ RUN addgroup -S mangala && adduser -S mangala -G mangala
 USER mangala
 
 # Copy the built artifact
-COPY --from=build /app/target/*.jar app.jar
+COPY --from=build /app/mangala-gateway/target/*.jar app.jar
 
 # Expose port
 EXPOSE 8000
