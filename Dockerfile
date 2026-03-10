@@ -35,8 +35,7 @@ COPY --from=build /app/mangala-gateway/target/*.jar app.jar
 EXPOSE 8000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8000/actuator/health || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 CMD wget --no-verbose --tries=1 --spider http://localhost:8000/actuator/health || exit 1
 
 # JVM tuning for containers
 ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0"

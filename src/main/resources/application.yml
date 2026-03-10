@@ -2,6 +2,10 @@ server:
   port: ${SERVER_PORT:8000}
 
 spring:
+  threads:
+    virtual:
+      enabled: true
+
   application:
     name: mangala-gateway
 
@@ -296,8 +300,8 @@ logging:
   level:
     root: INFO
     org.mangala.gateway: DEBUG
-    org.springframework.cloud.gateway: DEBUG
-    org.springframework.security: DEBUG
-    io.github.resilience4j: DEBUG
+#    org.springframework.cloud.gateway: DEBUG
+#    org.springframework.security: DEBUG
+#    io.github.resilience4j: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId:-}] [%X{spanId:-}] %-5level %logger{36} - %msg%n"
